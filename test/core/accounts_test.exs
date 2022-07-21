@@ -161,6 +161,15 @@ defmodule Core.AccountsTest do
     end
   end
 
+  test "child spec" do
+    user = "testABC"
+
+    assert Accounts.child_spec(Core.Accounts, user) == %{
+             id: {:via, Registry, {"testABC"}},
+             start: {Core.Accounts, :start_link, ["testABC"]}
+           }
+  end
+
   defp generate_random_username(size \\ 10) do
     for _ <- 1..size, into: "", do: <<Enum.random('0123456789abcdefghijklmnopqrstuwvyxz')>>
   end

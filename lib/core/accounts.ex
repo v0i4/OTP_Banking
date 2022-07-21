@@ -7,14 +7,21 @@ defmodule Core.Accounts do
 
   def init(v), do: {:ok, v}
 
-  def start_link(username) when is_binary(username) do
-    case GenServer.start_link(__MODULE__, User.new(username), name: via(username)) do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> {:error, :user_already_exists}
+  def start_link(username) do
+    #    {user} = username
+
+    if is_binary(username) do
+      case GenServer.start_link(__MODULE__, User.new(username), name: via(username)) do
+        {:ok, _pid} ->
+          :ok
+
+        {:error, {:already_started, _pid}} ->
+          {:error, :user_already_exists}
+      end
+    else
+      {:error, :wrong_arguments}
     end
   end
-
-  def start_link(_), do: {:error, :wrong_arguments}
 
   def get(username), do: GenServer.call(via(username), :get)
 
@@ -136,4 +143,11 @@ defmodule Core.Accounts do
   end
 
   def via(username), do: {:via, Registry, {:accounts, username}}
+
+  def child_spec(__MODULE__, username) do
+    %{
+      id: {:via, Registry, {username}},
+      start: {Core.Accounts, :start_link, [username]}
+    }
+  end
 end
