@@ -1,6 +1,6 @@
 # ExBanking
 
-OTP_banking: a pure elixir application that store state in memory using GenServer
+OTP_banking: a pure elixir application that stores state in memory using GenServer
 
 
 
