@@ -51,7 +51,7 @@ defmodule Core.AccountsTest do
           [msg | acc]
         end)
 
-      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_user end)
+      assert :too_many_requests_to_user in Enum.to_list(resp)
     end
   end
 
@@ -97,7 +97,7 @@ defmodule Core.AccountsTest do
           [msg | acc]
         end)
 
-      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_user end)
+      assert :too_many_requests_to_user in Enum.to_list(resp)
     end
   end
 
@@ -140,7 +140,7 @@ defmodule Core.AccountsTest do
           [msg | acc]
         end)
 
-      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_user end)
+      assert :too_many_requests_to_user in Enum.to_list(resp)
     end
   end
 
@@ -199,13 +199,12 @@ defmodule Core.AccountsTest do
       Server.start_link(from_user)
       Server.start_link(to_user)
 
-      assert {:ok, 10000} = Accounts.deposit(from_user, 10000, "USD")
+      assert {:ok, 10_000} = Accounts.deposit(from_user, 10_000, "USD")
 
       resp =
         1..3000
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.send(from_user, to_user, 1, "USD") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
-        |> Enum.filter(fn val -> !is_nil(val) end)
         |> Enum.reduce([], fn item, acc ->
           if tuple_size(item) == 2 do
             {_status, msg} = item
@@ -215,8 +214,7 @@ defmodule Core.AccountsTest do
           end
         end)
 
-      # assert :too_many_requests_to_sender in Enum.to_list(resp)
-      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_sender end)
+      assert :too_many_requests_to_sender in Enum.to_list(resp)
     end
 
     test "send to too many requested user" do
@@ -225,7 +223,7 @@ defmodule Core.AccountsTest do
       Server.start_link(from_user)
       Server.start_link(to_user)
 
-      assert {:ok, 10000} = Accounts.deposit(from_user, 10000, "USD")
+      assert {:ok, 10_000} = Accounts.deposit(from_user, 10_000, "USD")
 
       resp =
         1..3000
@@ -241,7 +239,6 @@ defmodule Core.AccountsTest do
         end)
 
       assert :too_many_requests_to_receiver in Enum.to_list(resp)
-      #      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_receiver end)
     end
   end
 
