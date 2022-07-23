@@ -83,7 +83,7 @@ defmodule Core.AccountsTest do
       assert {:error, :not_enough_money} == Accounts.withdraw(user, 101, "JPY")
     end
 
-    test "withdraw with too many requested user" do
+    test "withdraw in a too many requested user" do
       user = generate_random_username()
       Server.start_link(user)
       assert {:ok, 3000} = Accounts.deposit(user, 3000, "USD")
@@ -114,7 +114,7 @@ defmodule Core.AccountsTest do
       assert {:ok, 600.22} == Accounts.get_balance(user, "BRL")
     end
 
-    test "balance with wrong arguments" do
+    test "get balance with wrong arguments" do
       user = generate_random_username()
       assert :ok == Server.start_link(user)
       assert {:error, :wrong_arguments} == Accounts.get_balance(123, "BRL")
@@ -211,7 +211,7 @@ defmodule Core.AccountsTest do
           [msg | acc]
         end)
 
-      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_user end)
+      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_sender end)
     end
 
     test "send to too many requested user" do
@@ -224,14 +224,15 @@ defmodule Core.AccountsTest do
 
       resp =
         1..3000
-        |> Enum.map(fn _ -> Task.async(fn -> Accounts.send(from_user, to_user, 1, "BRL") end) end)
+        |> Enum.map(fn _ -> Task.async(fn -> Accounts.send(from_user, to_user, 1, "USD") end) end)
+        |> Enum.map(fn _ -> Task.async(fn -> Accounts.get_balance(to_user, "USD") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
           {_status, msg} = item
           [msg | acc]
         end)
 
-      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_user end)
+      assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_receiver end)
     end
   end
 

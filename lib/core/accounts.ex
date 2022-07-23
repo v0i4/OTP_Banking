@@ -80,14 +80,7 @@ defmodule Core.Accounts do
               end
             end)
 
-          case is_float(balance) do
-            true ->
-              balance = :erlang.float_to_binary(balance, decimals: 2) |> :erlang.binary_to_float()
-              {:ok, balance}
-
-            false ->
-              {:ok, balance}
-          end
+          format_number(balance)
         end
     end
   end
@@ -139,17 +132,20 @@ defmodule Core.Accounts do
     end
   end
 
-  def user_exists?(username) do
+  defp user_exists?(username) do
     pid = Registry.lookup(:accounts, username)
 
     if pid != [], do: true, else: false
   end
 
-  def handle_deposit(state, deposit) do
-    %{state | balance: [%{amount: deposit.amount, currency: deposit.currency} | state.balance]}
-  end
+  defp format_number(balance) do
+    case is_float(balance) do
+      true ->
+        balance = :erlang.float_to_binary(balance, decimals: 2) |> :erlang.binary_to_float()
+        {:ok, balance}
 
-  def handle_withdraw(state, deposit) do
-    %{state | balance: [%{amount: -deposit.amount, currency: deposit.currency} | state.balance]}
+      false ->
+        {:ok, balance}
+    end
   end
 end

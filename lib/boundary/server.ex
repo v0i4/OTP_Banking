@@ -1,6 +1,5 @@
 defmodule Boundary.Server do
   @moduledoc false
-  alias Core.Accounts
   alias Core.User
 
   use GenServer
@@ -35,11 +34,19 @@ defmodule Boundary.Server do
   end
 
   def handle_cast({:deposit, deposit}, state) do
-    {:noreply, Accounts.handle_deposit(state, deposit)}
+    {:noreply, handle_deposit(state, deposit)}
   end
 
   def handle_cast({:withdraw, withdraw}, state) do
-    {:noreply, Accounts.handle_withdraw(state, withdraw)}
+    {:noreply, handle_withdraw(state, withdraw)}
+  end
+
+  defp handle_deposit(state, deposit) do
+    %{state | balance: [%{amount: deposit.amount, currency: deposit.currency} | state.balance]}
+  end
+
+  defp handle_withdraw(state, deposit) do
+    %{state | balance: [%{amount: -deposit.amount, currency: deposit.currency} | state.balance]}
   end
 
   defp get_pid_by_name(process_name) do
