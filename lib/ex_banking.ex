@@ -1,10 +1,22 @@
 defmodule ExBanking do
   @moduledoc """
   Documentation for `ExBanking`.
+    API interface for banking operations:
+
+  ex:
+    ExBanking.create_user("some_user") \n
+    ExBanking.deposit("some_user", 100, "USD")\n
+    ExBanking.withdraw("some_user", 100, "BRL")\n
+    ExBanking.get_balance("some_user", "USD")\n
+    ExBanking.send("from_user", "to_user", "100", "BRL")\n
   """
 
   @doc """
   create_user/1.
+
+  Creates a new user with a given `username` 
+
+  Returns `:ok`
 
   ## Examples
 
@@ -23,6 +35,10 @@ defmodule ExBanking do
   @doc """
   deposit/3
 
+  Deposits the `amount` of `currency` to the `user`
+
+  Returns `{:ok, new_user_balance}`
+
   ## Example
 
       iex> ExBanking.create_user("test")
@@ -33,6 +49,10 @@ defmodule ExBanking do
 
   @doc """
   withdraw/3
+
+  Withdraws the `amount` of `currency` from the `user`
+
+  Returns `{:ok, new_user_balance}`
 
   ## Example
 
@@ -46,6 +66,10 @@ defmodule ExBanking do
   @doc """
   get_balance/2
 
+  Get the `user` balance for the given `currency`
+
+  Returns {:ok, user_balance}
+
   ## Example
 
     iex> ExBanking.create_user("test")
@@ -57,6 +81,10 @@ defmodule ExBanking do
 
   @doc """
   send/4
+
+  Sends the `amount` of `currency` `from_user` to `to_user`
+
+  Returns {:ok, from_user_balance, to_user_balance}
 
   ## Example
 
