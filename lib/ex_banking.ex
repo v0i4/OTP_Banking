@@ -8,12 +8,16 @@ defmodule ExBanking do
 
   ## Examples
 
-      iex> ExBanking.create_user("some_user")
+
+      iex> ExBanking.create_user("user_example")
       :ok
 
   """
   def create_user(username) do
-    DynamicSupervisor.start_child(:users, {Core.Accounts, username})
+    case DynamicSupervisor.start_child(:users, {Boundary.Server, username}) do
+      {_, :ok} -> :ok
+      err -> err
+    end
   end
 
   @doc """

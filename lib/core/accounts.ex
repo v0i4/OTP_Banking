@@ -2,28 +2,9 @@ defmodule Core.Accounts do
   @moduledoc """
   Documentation for Core.Accounts
   """
-  use GenServer
-  alias Core.User
+  alias Boundary.Server
 
-  def init(v), do: {:ok, v}
-
-  def start_link(username) do
-    #    {user} = username
-
-    if is_binary(username) do
-      case GenServer.start_link(__MODULE__, User.new(username), name: via(username)) do
-        {:ok, _pid} ->
-          :ok
-
-        {:error, {:already_started, _pid}} ->
-          {:error, :user_already_exists}
-      end
-    else
-      {:error, :wrong_arguments}
-    end
-  end
-
-  def get(username), do: GenServer.call(via(username), :get)
+  def get(username), do: GenServer.call(Server.via(username), :get)
 
   def deposit(username, amount, currency) do
     cond do
@@ -35,30 +16,45 @@ defmodule Core.Accounts do
 
       true ->
         deposit = %{username: username, amount: amount, currency: currency}
-        GenServer.cast(via(username), {:deposit, deposit})
-        get_balance(username, currency)
+
+        if Server.check_overload(username) do
+          {:error, :too_many_requests_to_user}
+        else
+          GenServer.cast(Server.via(username), {:deposit, deposit})
+          get_balance(username, currency)
+        end
     end
   end
 
-  def withdraw(username, amount, currency) do
-    cond do
-      !is_binary(username) || !is_binary(currency) || !is_number(amount) || amount <= 0 ->
-        {:error, :wrong_arguments}
+  # with expected args
+  def withdraw(username, amount, currency)
+      when is_binary(username) and is_binary(currency) and is_number(amount) and amount > 0 do
+    if user_exists?(username) do
+      case get_balance(username, currency) do
+        {:ok, total_available} ->
+          if total_available >= amount do
+            withdraw = %{username: username, amount: amount, currency: currency}
 
-      !user_exists?(username) ->
-        {:error, :user_does_not_exist}
+            if Server.check_overload(username) do
+              {:error, :too_many_requests_to_user}
+            else
+              GenServer.cast(Server.via(username), {:withdraw, withdraw})
+              get_balance(username, currency)
+            end
+          else
+            {:error, :not_enough_money}
+          end
 
-      true ->
-        {:ok, total_available} = get_balance(username, currency)
-
-        if total_available >= amount do
-          withdraw = %{username: username, amount: amount, currency: currency}
-          GenServer.cast(via(username), {:withdraw, withdraw})
-          get_balance(username, currency)
-        else
-          {:error, :not_enough_money}
-        end
+        error ->
+          error
+      end
+    else
+      {:error, :user_does_not_exist}
     end
+  end
+
+  def withdraw(_username, _amount, _currency) do
+    {:error, :wrong_arguments}
   end
 
   def get_balance(username, currency) do
@@ -70,18 +66,29 @@ defmodule Core.Accounts do
         {:error, :user_does_not_exist}
 
       true ->
-        user = get(username)
+        if Server.check_overload(username) do
+          {:error, :too_many_requests_to_user}
+        else
+          user = get(username)
 
-        balance =
-          Enum.reduce(user.balance, 0, fn transaction, acc ->
-            if transaction.currency == currency do
-              transaction.amount + acc
-            else
-              acc
-            end
-          end)
+          balance =
+            Enum.reduce(user.balance, 0, fn transaction, acc ->
+              if transaction.currency == currency do
+                transaction.amount + acc
+              else
+                acc
+              end
+            end)
 
-        {:ok, balance}
+          case is_float(balance) do
+            true ->
+              balance = :erlang.float_to_binary(balance, decimals: 2) |> :erlang.binary_to_float()
+              {:ok, balance}
+
+            false ->
+              {:ok, balance}
+          end
+        end
     end
   end
 
@@ -98,34 +105,38 @@ defmodule Core.Accounts do
         {:error, :receiver_does_not_exist}
 
       true ->
-        {:ok, total_sender_available} = get_balance(from_user, currency)
+        case get_balance(from_user, currency) do
+          {:ok, total_sender_available} ->
+            if total_sender_available >= amount do
+              withdraw = %{username: from_user, amount: amount, currency: currency}
+              deposit = %{username: to_user, amount: amount, currency: currency}
 
-        if total_sender_available >= amount do
-          withdraw = %{username: from_user, amount: amount, currency: currency}
-          deposit = %{username: to_user, amount: amount, currency: currency}
+              cond do
+                Server.check_overload(from_user) ->
+                  {:error, :too_many_requests_to_sender}
 
-          GenServer.cast(via(from_user), {:withdraw, withdraw})
-          GenServer.cast(via(to_user), {:deposit, deposit})
+                Server.check_overload(to_user) ->
+                  {:error, :too_many_requests_to_receiver}
 
-          {:ok, from_user_balance} = get_balance(from_user, currency)
-          {:ok, to_user_balance} = get_balance(to_user, currency)
-          {:ok, from_user_balance, to_user_balance}
-        else
-          {:error, :not_enough_money}
+                true ->
+                  GenServer.cast(Server.via(from_user), {:withdraw, withdraw})
+                  GenServer.cast(Server.via(to_user), {:deposit, deposit})
+
+                  with {:ok, from_user_balance} <- get_balance(from_user, currency),
+                       {:ok, to_user_balance} <- get_balance(to_user, currency) do
+                    {:ok, from_user_balance, to_user_balance}
+                  else
+                    error -> error
+                  end
+              end
+            else
+              {:error, :not_enough_money}
+            end
+
+          error ->
+            error
         end
     end
-  end
-
-  def handle_call(:get, _from, state) do
-    {:reply, state, state}
-  end
-
-  def handle_cast({:deposit, deposit}, state) do
-    {:noreply, handle_deposit(state, deposit)}
-  end
-
-  def handle_cast({:withdraw, withdraw}, state) do
-    {:noreply, handle_withdraw(state, withdraw)}
   end
 
   def user_exists?(username) do
@@ -140,14 +151,5 @@ defmodule Core.Accounts do
 
   def handle_withdraw(state, deposit) do
     %{state | balance: [%{amount: -deposit.amount, currency: deposit.currency} | state.balance]}
-  end
-
-  def via(username), do: {:via, Registry, {:accounts, username}}
-
-  def child_spec(__MODULE__, username) do
-    %{
-      id: {:via, Registry, {username}},
-      start: {Core.Accounts, :start_link, [username]}
-    }
   end
 end
