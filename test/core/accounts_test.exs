@@ -204,11 +204,12 @@ defmodule Core.AccountsTest do
       resp =
         1..3000
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.send(from_user, to_user, 1, "USD") end) end)
-        |> Enum.map(fn _ -> Task.async(fn -> Accounts.get_balance(from_user, "USD") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {_status, msg} = item
-          [msg | acc]
+          if tuple_size(item) == 2 do
+            {_status, msg} = item
+            [msg | acc]
+          end
         end)
 
       assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_sender end)
@@ -225,11 +226,12 @@ defmodule Core.AccountsTest do
       resp =
         1..3000
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.send(from_user, to_user, 1, "USD") end) end)
-        |> Enum.map(fn _ -> Task.async(fn -> Accounts.get_balance(to_user, "USD") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {_status, msg} = item
-          [msg | acc]
+          if tuple_size(item) == 2 do
+            {_status, msg} = item
+            [msg | acc]
+          end
         end)
 
       assert Enum.any?(resp, fn msg -> msg == :too_many_requests_to_receiver end)
