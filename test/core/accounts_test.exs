@@ -47,7 +47,7 @@ defmodule Core.AccountsTest do
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.deposit(user, 1, "BRL") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {status, msg} = item
+          {_status, msg} = item
           [msg | acc]
         end)
 
@@ -93,7 +93,7 @@ defmodule Core.AccountsTest do
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.withdraw(user, 1, "BRL") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {status, msg} = item
+          {_status, msg} = item
           [msg | acc]
         end)
 
@@ -109,7 +109,9 @@ defmodule Core.AccountsTest do
       assert {:ok, 0} == Accounts.get_balance(user, "EUR")
       assert {:ok, 100} == Accounts.deposit(user, 100, "JPY")
       assert {:ok, 200} == Accounts.deposit(user, 200, "BRL")
-      assert {:ok, 200} == Accounts.get_balance(user, "BRL")
+      assert {:ok, 400.10} == Accounts.deposit(user, 200.10000000000000022323213213, "BRL")
+      assert {:ok, 600.22} == Accounts.deposit(user, 200.123123, "BRL")
+      assert {:ok, 600.22} == Accounts.get_balance(user, "BRL")
     end
 
     test "balance with wrong arguments" do
@@ -134,7 +136,7 @@ defmodule Core.AccountsTest do
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.get_balance(user, "BRL") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {status, msg} = item
+          {_status, msg} = item
           [msg | acc]
         end)
 
@@ -205,7 +207,7 @@ defmodule Core.AccountsTest do
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.get_balance(from_user, "USD") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {status, msg} = item
+          {_status, msg} = item
           [msg | acc]
         end)
 
@@ -225,7 +227,7 @@ defmodule Core.AccountsTest do
         |> Enum.map(fn _ -> Task.async(fn -> Accounts.send(from_user, to_user, 1, "BRL") end) end)
         |> Enum.map(fn x -> Task.await(x) end)
         |> Enum.reduce([], fn item, acc ->
-          {status, msg} = item
+          {_status, msg} = item
           [msg | acc]
         end)
 
